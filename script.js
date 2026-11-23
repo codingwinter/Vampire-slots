@@ -1,225 +1,104 @@
 
-// ============================================
+// ==========================================
 // VAMPIRE SLOTS
 // Main game and bonus game
-// ============================================
+// Virtual VampCoins only - no real money
+// ==========================================
 
+// ---------- GAME SETTINGS ----------
 
-// ============================================
-// 1. GAME SETTINGS
-// ============================================
-
-const ROWS = 4;
-const COLUMNS = 4;
-
-let balance = Number(
-    localStorage.getItem("vampireBalance")
-);
-
-if (!Number.isFinite(balance) || balance < 0) {
-    balance = 1000;
-}
-
+let balance = Number(localStorage.getItem("vampireBalance")) || 1000;
 let bet = 10;
+
+const MAX_BET = 100;
+const MIN_BET = 1;
+
+// Normal symbol weights add up to 100.
+// These give approximately a 17.5% chance
+// of at least one winning row per spin.
+
+const normalSymbols = [
+    { name: "fangs", weight: 46, payout: 100 },
+    { name: "blooddrop", weight: 14, payout: 50 },
+    { name: "bat", weight: 10, payout: 10 },
+    { name: "extra", weight: 20, payout: 0 },
+    { name: "skull", weight: 7, payout: 10 },
+    { name: "eye", weight: 3, payout: 1000 }
+];
+
+// Bonus game symbols.
+// Fangs do not lock and do not pay.
+// Coins and jackpots lock into place.
+
+const bonusSymbols = [
+    { name: "fangs", weight: 65, payout: 0 },
+    { name: "coin", weight: 25, payout: 1 },
+    { name: "mini", weight: 6, payout: 10 },
+    { name: "major", weight: 3, payout: 100 },
+    { name: "grand", weight: 1, payout: 1000 }
+];
+
+const GRID_SIZE = 4;
+const BONUS_MAX_SPINS = 20;
+
+// ---------- HTML ELEMENTS ----------
+
+const balanceDisplay = document.getElementById("balance");
+const betDisplay = document.getElementById("bet");
+
+const reels = document.getElementById("reels");
+const message = document.getElementById("message");
+
+const spinButton = document.getElementById("spinButton");
+const resetButton = document.getElementById("resetButton");
+
+const bonusOverlay = document.getElementById("bonusOverlay");
+const bonusGrid = document.getElementById("bonusGrid");
+const bonusSpinsDisplay = document.getElementById("bonusSpins");
+const bonusTotalDisplay = document.getElementById("bonusTotal");
+const bonusMessage = document.getElementById("bonusMessage");
+
+const bonusSpinButton = document.getElementById("bonusSpinButton");
+const collectButton = document.getElementById("collectButton");
+
+const betUpButton = document.getElementById("betUp");
+const betDownButton = document.getElementById("betDown");
+
+// ---------- GAME VARIABLES ----------
+
 let isSpinning = false;
 let bonusActive = false;
 
+let bonusSpinsLeft = BONUS_MAX_SPINS;
+let bonusTotal = 0;
+let bonusCells = [];
+let collectedJackpots = [];
 
-// ============================================
-// 2. NORMAL GAME SYMBOLS
-// ============================================
+// ---------- HELPER FUNCTIONS ----------
 
-const symbols = [
-
-    {
-        name: "fangs",
-        image: "assets/fangs.png",
-        payout: 100,
-        weight: 18
-    },
-
-    {
-        name: "blooddrop",
-        image: "assets/blooddrop.png",
-        payout: 50,
-        weight: 18
-    },
-
-    {
-        name: "bat",
-        image: "assets/bat.png",
-        payout: 10,
-        weight: 20
-    },
-
-    {
-        name: "extra",
-        image: "assets/extra.png",
-        payout: 0,
-        weight: 10
-    },
-
-    {
-        name: "skull",
-        image: "assets/skull.png",
-        payout: 10,
-        weight: 20
-    },
-
-    {
-        name: "eye",
-        image: "assets/eye.png",
-        payout: 1000,
-        weight: 14
-    }
-
-];
-
-
-// ============================================
-// 3. BONUS GAME SYMBOLS
-// ============================================
-
-const bonusSymbols = [
-
-    {
-        name: "fangs",
-        image: "assets/fangs.png",
-        payout: 0,
-        weight: 65
-    },
-
-    {
-        name: "coin",
-        image: "assets/coin.png",
-        payout: 1,
-        weight: 25
-    },
-
-    {
-        name: "mini",
-        image: "assets/mini.png",
-        payout: 10,
-        weight: 6
-    },
-
-    {
-        name: "major",
-        image: "assets/major.png",
-        payout: 100,
-        weight: 3
-    },
-
-    {
-        name: "grand",
-        image: "assets/grand.png",
-        payout: 1000,
-        weight: 1
-    }
-
-];
-
-
-// ============================================
-// 4. HTML ELEMENTS
-// ============================================
-
-const reels = document.getElementById("reels");
-
-const balanceDisplay =
-    document.getElementById("balance");
-
-const betDisplay =
-    document.getElementById("betDisplay");
-
-const message =
-    document.getElementById("message");
-
-const spinButton =
-    document.getElementById("spinButton");
-
-const increaseBet =
-    document.getElementById("increaseBet");
-
-const decreaseBet =
-    document.getElementById("decreaseBet");
-
-const resetButton =
-    document.getElementById("resetButton");
-
-
-// Bonus game elements
-
-const bonusOverlay =
-    document.getElementById("bonusOverlay");
-
-const bonusGrid =
-    document.getElementById("bonusGrid");
-
-const spinsLeftDisplay =
-    document.getElementById("spinsLeft");
-
-const bonusWinDisplay =
-    document.getElementById("bonusWin");
-
-const bonusMessage =
-    document.getElementById("bonusMessage");
-
-const bonusSpinButton =
-    document.getElementById("bonusSpinButton");
-
-const collectButton =
-    document.getElementById("collectButton");
-
-
-// ============================================
-// 5. SAVE AND UPDATE DISPLAY
-// ============================================
-
-function saveGame() {
-
-    localStorage.setItem(
-        "vampireBalance",
-        balance
-    );
-
+function saveBalance() {
+    localStorage.setItem("vampireBalance", balance);
 }
 
+function updateDisplays() {
+    if (balanceDisplay) {
+        balanceDisplay.textContent = balance;
+    }
 
-function updateDisplay() {
+    if (betDisplay) {
+        betDisplay.textContent = bet;
+    }
 
-    balanceDisplay.textContent =
-        balance.toLocaleString();
+    if (bonusSpinsDisplay) {
+        bonusSpinsDisplay.textContent = bonusSpinsLeft;
+    }
 
-    betDisplay.textContent =
-        bet.toLocaleString();
-
-    increaseBet.disabled =
-        isSpinning ||
-        bonusActive ||
-        bet >= balance;
-
-    decreaseBet.disabled =
-        isSpinning ||
-        bonusActive ||
-        bet <= 1;
-
-    spinButton.disabled =
-        isSpinning ||
-        bonusActive ||
-        balance < bet;
-
-    saveGame();
-
+    if (bonusTotalDisplay) {
+        bonusTotalDisplay.textContent = bonusTotal;
+    }
 }
 
-
-// ============================================
-// 6. RANDOM SYMBOL GENERATOR
-// ============================================
-
-function getRandomSymbol(symbolList) {
-
+function randomSymbol(symbolList) {
     const totalWeight = symbolList.reduce(
         (total, symbol) => total + symbol.weight,
         0
@@ -228,660 +107,417 @@ function getRandomSymbol(symbolList) {
     let random = Math.random() * totalWeight;
 
     for (const symbol of symbolList) {
-
         random -= symbol.weight;
 
         if (random < 0) {
             return symbol;
         }
-
     }
 
     return symbolList[0];
-
 }
 
+function createSymbolImage(symbolName) {
+    const img = document.createElement("img");
 
-// ============================================
-// 7. CREATE NORMAL GRID
-// ============================================
+    img.src = `assets/${symbolName}.png`;
+    img.alt = symbolName;
+    img.className = "symbol-image";
 
-function createGrid() {
+    img.onerror = function () {
+        this.style.display = "none";
+    };
 
-    reels.innerHTML = "";
-
-    for (let i = 0; i < 16; i++) {
-
-        const symbol =
-            getRandomSymbol(symbols);
-
-        const cell =
-            document.createElement("div");
-
-        cell.className = "symbol";
-
-        const image =
-            document.createElement("img");
-
-        image.src = symbol.image;
-        image.alt = symbol.name;
-
-        cell.appendChild(image);
-
-        reels.appendChild(cell);
-
-    }
-
+    return img;
 }
 
+function createCell(symbolName, className = "symbol-cell") {
+    const cell = document.createElement("div");
+    cell.className = className;
 
-// ============================================
-// 8. READ NORMAL GRID
-// ============================================
+    cell.appendChild(createSymbolImage(symbolName));
 
-function getGrid() {
+    return cell;
+}
 
+// ---------- NORMAL GAME ----------
+
+function createNormalGrid() {
     const grid = [];
 
-    for (let row = 0; row < ROWS; row++) {
+    for (let row = 0; row < GRID_SIZE; row++) {
+        grid[row] = [];
 
-        const currentRow = [];
-
-        for (let col = 0; col < COLUMNS; col++) {
-
-            const index =
-                row * COLUMNS + col;
-
-            const image =
-                reels.children[index].querySelector("img");
-
-            const symbol = symbols.find(
-                item => item.name === image.alt
-            );
-
-            currentRow.push(symbol);
-
+        for (let col = 0; col < GRID_SIZE; col++) {
+            grid[row][col] = randomSymbol(normalSymbols);
         }
-
-        grid.push(currentRow);
-
     }
 
     return grid;
-
 }
 
+function displayNormalGrid(grid) {
+    if (!reels) return;
 
-// ============================================
-// 9. CHECK NORMAL WINNING ROWS
-// ============================================
+    reels.innerHTML = "";
 
-function checkWins(grid) {
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            const cell = createCell(grid[row][col].name);
+            reels.appendChild(cell);
+        }
+    }
+}
 
+function checkNormalWins(grid) {
     let totalWin = 0;
+    let extraTriggered = false;
+    let winningRows = 0;
 
-    let winningCells = [];
+    for (let row = 0; row < GRID_SIZE; row++) {
+        const firstSymbol = grid[row][0].name;
 
-    let bonusTriggered = false;
-
-    let winningNames = [];
-
-    for (let row = 0; row < ROWS; row++) {
-
-        const firstSymbol = grid[row][0];
-
-        const allMatch = grid[row].every(
-            symbol => symbol.name === firstSymbol.name
+        const isFullRow = grid[row].every(
+            symbol => symbol.name === firstSymbol
         );
 
-        if (!allMatch) {
+        if (!isFullRow) continue;
+
+        if (firstSymbol === "extra") {
+            extraTriggered = true;
             continue;
         }
 
-        winningNames.push(firstSymbol.name);
+        const winningSymbol = normalSymbols.find(
+            symbol => symbol.name === firstSymbol
+        );
 
-        // EXTRA starts the bonus game
-
-        if (firstSymbol.name === "extra") {
-
-            bonusTriggered = true;
-
-            continue;
-
+        if (winningSymbol) {
+            totalWin += winningSymbol.payout;
+            winningRows++;
         }
-
-        // Calculate normal payouts
-
-        totalWin += firstSymbol.payout;
-
-        // Highlight all four winning positions
-
-        for (let col = 0; col < COLUMNS; col++) {
-
-            winningCells.push(
-                row * COLUMNS + col
-            );
-
-        }
-
     }
 
     return {
         totalWin,
-        winningCells,
-        bonusTriggered,
-        winningNames
+        extraTriggered,
+        winningRows
     };
-
 }
-
-
-// ============================================
-// 10. HIGHLIGHT WINNING SYMBOLS
-// ============================================
-
-function highlightWins(cellsToHighlight) {
-
-    for (const index of cellsToHighlight) {
-
-        reels.children[index].classList.add(
-            "winning"
-        );
-
-    }
-
-}
-
-
-// ============================================
-// 11. NORMAL SPIN
-// ============================================
 
 function spin() {
+    if (isSpinning || bonusActive) return;
 
-    if (
-        isSpinning ||
-        bonusActive ||
-        balance < bet
-    ) {
+    if (balance < bet) {
+        if (message) {
+            message.textContent = "Not enough VampCoins!";
+        }
         return;
     }
 
     isSpinning = true;
+    spinButton.disabled = true;
 
     balance -= bet;
+    saveBalance();
+    updateDisplays();
 
-    updateDisplay();
+    if (message) {
+        message.textContent = "Spinning...";
+    }
 
-    message.textContent = "SPINNING...";
-
-    createGrid();
-
+    // Short delay before showing the result.
     setTimeout(() => {
+        const grid = createNormalGrid();
 
-        const grid = getGrid();
+        displayNormalGrid(grid);
 
-        const result = checkWins(grid);
-
-        // Add normal winnings
-
-        balance += result.totalWin;
-
-        highlightWins(result.winningCells);
+        const result = checkNormalWins(grid);
 
         if (result.totalWin > 0) {
+            balance += result.totalWin;
 
-            message.textContent =
-                "YOU WON " +
-                result.totalWin +
-                " VAMPCOINS!";
-
+            if (message) {
+                message.textContent =
+                    `You won ${result.totalWin} VampCoins!`;
+            }
+        } else if (result.extraTriggered) {
+            if (message) {
+                message.textContent = "BONUS! Four Extras!";
+            }
         } else {
-
-            message.textContent = "NO WIN...";
-
+            if (message) {
+                message.textContent = "No win. Try again!";
+            }
         }
 
-        // Finish normal spin before bonus starts
+        saveBalance();
+        updateDisplays();
 
         isSpinning = false;
+        spinButton.disabled = false;
 
-        updateDisplay();
-
-        // Open bonus game if EXTRA row appeared
-
-        if (result.bonusTriggered) {
-
-            message.textContent =
-                "EXTRA BONUS UNLOCKED!";
-
-            setTimeout(() => {
-
-                startBonusGame();
-
-            }, 1200);
-
+        // Bonus starts after the normal spin.
+        if (result.extraTriggered) {
+            setTimeout(startBonusGame, 700);
         }
 
-        else if (balance < bet) {
-
-            message.textContent =
-                "NOT ENOUGH VAMPCOINS!";
-
-        }
-
-    }, 1000);
-
+    }, 800);
 }
 
+// ---------- BET CONTROLS ----------
 
-// ============================================
-// 12. BET CONTROLS
-// ============================================
+if (betUpButton) {
+    betUpButton.addEventListener("click", () => {
+        if (isSpinning || bonusActive) return;
 
-increaseBet.addEventListener("click", () => {
+        bet = Math.min(MAX_BET, bet + 1);
+        updateDisplays();
+    });
+}
 
-    if (
-        !isSpinning &&
-        !bonusActive &&
-        bet < balance
-    ) {
+if (betDownButton) {
+    betDownButton.addEventListener("click", () => {
+        if (isSpinning || bonusActive) return;
 
-        bet = Math.min(bet + 10, balance);
+        bet = Math.max(MIN_BET, bet - 1);
+        updateDisplays();
+    });
+}
 
-        updateDisplay();
+// ---------- RESET BUTTON ----------
 
-    }
+if (resetButton) {
+    resetButton.addEventListener("click", () => {
+        if (isSpinning || bonusActive) return;
 
-});
+        balance = 1000;
+        bet = 10;
 
+        saveBalance();
+        updateDisplays();
 
-decreaseBet.addEventListener("click", () => {
+        if (message) {
+            message.textContent = "Game reset. Good luck!";
+        }
+    });
+}
 
-    if (
-        !isSpinning &&
-        !bonusActive
-    ) {
-
-        bet = Math.max(1, bet - 10);
-
-        updateDisplay();
-
-    }
-
-});
-
-
-spinButton.addEventListener("click", spin);
-
-
-// ============================================
-// 13. BONUS GAME SETTINGS
-// ============================================
-
-let bonusSpinsLeft = 20;
-
-let bonusTotal = 0;
-
-let bonusCells = [];
-
-let collectedJackpots = [];
-
-let bonusSpinning = false;
-
-
-// ============================================
-// 14. START BONUS GAME
-// ============================================
+// ---------- BONUS GAME ----------
 
 function startBonusGame() {
-
     bonusActive = true;
 
-    bonusSpinsLeft = 20;
-
+    bonusSpinsLeft = BONUS_MAX_SPINS;
     bonusTotal = 0;
 
     collectedJackpots = [];
 
-    bonusSpinning = false;
+    // All 16 bonus positions start unlocked.
+    bonusCells = Array(GRID_SIZE * GRID_SIZE).fill(null);
 
-    // Create 16 empty bonus positions
+    if (bonusOverlay) {
+        bonusOverlay.classList.add("active");
+    }
 
-    bonusCells = Array.from(
-        { length: 16 },
-        () => null
-    );
+    if (bonusMessage) {
+        bonusMessage.textContent =
+            "Lock in prizes! Fangs disappear without a prize.";
+    }
+
+    if (bonusSpinButton) {
+        bonusSpinButton.disabled = false;
+    }
+
+    if (collectButton) {
+        collectButton.disabled = true;
+    }
+
+    displayBonusGrid();
+    updateDisplays();
+}
+
+function displayBonusGrid() {
+    if (!bonusGrid) return;
 
     bonusGrid.innerHTML = "";
 
-    for (let i = 0; i < 16; i++) {
+    bonusCells.forEach((symbolName, index) => {
+        const cell = document.createElement("div");
 
-        const cell =
-            document.createElement("div");
-
-        cell.className = "bonus-cell";
-
-        cell.id = "bonus-cell-" + i;
+        if (symbolName) {
+            cell.className = "bonus-cell locked";
+            cell.appendChild(createSymbolImage(symbolName));
+        } else {
+            cell.className = "bonus-cell unlocked";
+            cell.textContent = "?";
+        }
 
         bonusGrid.appendChild(cell);
-
-    }
-
-    spinsLeftDisplay.textContent =
-        bonusSpinsLeft;
-
-    bonusWinDisplay.textContent =
-        bonusTotal;
-
-    bonusMessage.textContent =
-        "COLLECT YOUR PRIZES!";
-
-    bonusSpinButton.classList.remove("hidden");
-
-    bonusSpinButton.disabled = false;
-
-    collectButton.classList.add("hidden");
-
-    bonusOverlay.classList.remove("hidden");
-
-    updateDisplay();
-
+    });
 }
 
+function getAvailableBonusSymbols() {
+    return bonusSymbols.filter(symbol => {
+        if (
+            ["mini", "major", "grand"].includes(symbol.name) &&
+            collectedJackpots.includes(symbol.name)
+        ) {
+            return false;
+        }
 
-// ============================================
-// 15. BONUS SYMBOL GENERATOR
-// ============================================
-
-function getBonusSymbol() {
-
-    // Big prizes can only be collected once
-
-    const availableSymbols =
-        bonusSymbols.filter(symbol => {
-
-            if (
-                symbol.name === "mini" ||
-                symbol.name === "major" ||
-                symbol.name === "grand"
-            ) {
-
-                return !collectedJackpots.includes(
-                    symbol.name
-                );
-
-            }
-
-            return true;
-
-        });
-
-    return getRandomSymbol(availableSymbols);
-
+        return true;
+    });
 }
-
-
-// ============================================
-// 16. DISPLAY BONUS SYMBOL
-// ============================================
-
-function displayBonusSymbol(index, symbol) {
-
-    const cell = document.getElementById(
-        "bonus-cell-" + index
-    );
-
-    cell.innerHTML = "";
-
-    const image =
-        document.createElement("img");
-
-    image.src = symbol.image;
-    image.alt = symbol.name;
-
-    cell.appendChild(image);
-
-    cell.classList.add("locked");
-
-}
-
-
-// ============================================
-// 17. BONUS SPIN
-// ============================================
 
 function bonusSpin() {
+    if (!bonusActive || bonusSpinsLeft <= 0) return;
 
-    if (
-        !bonusActive ||
-        bonusSpinning ||
-        bonusSpinsLeft <= 0
-    ) {
+    const unlockedPositions = [];
+
+    bonusCells.forEach((cell, index) => {
+        if (cell === null) {
+            unlockedPositions.push(index);
+        }
+    });
+
+    if (unlockedPositions.length === 0) {
+        endBonusGame("All positions are locked!");
         return;
     }
 
-    bonusSpinning = true;
-
-    bonusSpinButton.disabled = true;
-
-    bonusMessage.textContent =
-        "SPINNING FOR PRIZES...";
-
-    // Reduce remaining spins
+    if (bonusSpinButton) {
+        bonusSpinButton.disabled = true;
+    }
 
     bonusSpinsLeft--;
 
-    spinsLeftDisplay.textContent =
-        bonusSpinsLeft;
-
     let newPrizes = 0;
+    let newLocks = 0;
 
-    let newPrizeNames = [];
+    unlockedPositions.forEach(index => {
+        const symbol = randomSymbol(getAvailableBonusSymbols());
 
-    // Roll all positions that are not locked
-
-    for (let i = 0; i < 16; i++) {
-
-        // Already collected positions stay locked
-
-        if (bonusCells[i] !== null) {
-            continue;
-        }
-
-        const symbol = getBonusSymbol();
-
-        // Fangs give no prize and do not lock
-
+        // Fangs are a blank result.
+        // They do not lock the position.
         if (symbol.name === "fangs") {
-            continue;
+            return;
         }
 
-        // Lock the new prize
-
-        bonusCells[i] = symbol;
-
-        newPrizes++;
-
-        newPrizeNames.push(symbol.name);
-
-        displayBonusSymbol(i, symbol);
-
-        // Add prize value
+        // Lock the prize into this position.
+        bonusCells[index] = symbol.name;
+        newLocks++;
 
         bonusTotal += symbol.payout;
+        newPrizes += symbol.payout;
 
-        // Big jackpots only once per bonus round
-
+        // Each jackpot can only be collected once.
         if (
-            symbol.name === "mini" ||
-            symbol.name === "major" ||
-            symbol.name === "grand"
+            ["mini", "major", "grand"].includes(symbol.name)
         ) {
-
-            collectedJackpots.push(
-                symbol.name
-            );
-
+            collectedJackpots.push(symbol.name);
         }
+    });
 
+    displayBonusGrid();
+    updateDisplays();
+
+    if (bonusMessage) {
+        if (newLocks === 0) {
+            bonusMessage.textContent =
+                "No prizes locked! Spin again.";
+        } else {
+            bonusMessage.textContent =
+                `You locked ${newLocks} prize(s)! Added ${newPrizes} VampCoins.`;
+        }
     }
 
-    bonusWinDisplay.textContent =
-        bonusTotal.toLocaleString();
+    // End if all 16 positions are locked.
+    const allLocked = bonusCells.every(cell => cell !== null);
 
-    // Show result
-
-    setTimeout(() => {
-
-        if (newPrizes > 0) {
-
-            bonusMessage.textContent =
-                "NEW PRIZE: " +
-                newPrizeNames.join(", ").toUpperCase();
-
-        } else {
-
-            bonusMessage.textContent =
-                "NO NEW PRIZES!";
-
-        }
-
-        // Check if all 16 positions are locked
-
-        const allLocked = bonusCells.every(
-            cell => cell !== null
-        );
-
-        // End if no spins remain or grid is full
-
-        if (
-            bonusSpinsLeft <= 0 ||
-            allLocked
-        ) {
-
-            finishBonusGame();
-
-        } else {
-
-            bonusSpinning = false;
-
-            bonusSpinButton.disabled = false;
-
-        }
-
-    }, 700);
-
-}
-
-
-// ============================================
-// 18. FINISH BONUS GAME
-// ============================================
-
-function finishBonusGame() {
-
-    bonusSpinning = false;
-
-    bonusSpinButton.disabled = true;
-
-    bonusSpinButton.classList.add("hidden");
-
-    bonusMessage.textContent =
-        "BONUS COMPLETE!";
-
-    collectButton.classList.remove("hidden");
-
-}
-
-
-// ============================================
-// 19. COLLECT BONUS PRIZES
-// ============================================
-
-function collectBonus() {
-
-    if (
-        !bonusActive ||
-        bonusSpinning
-    ) {
+    if (allLocked) {
+        endBonusGame("Amazing! All 16 positions are locked!");
         return;
     }
+
+    // End when the 20 spins have been used.
+    if (bonusSpinsLeft <= 0) {
+        endBonusGame("Bonus spins finished!");
+        return;
+    }
+
+    if (bonusSpinButton) {
+        bonusSpinButton.disabled = false;
+    }
+}
+
+// ---------- END BONUS GAME ----------
+
+function endBonusGame(reason) {
+    if (bonusSpinButton) {
+        bonusSpinButton.disabled = true;
+    }
+
+    if (bonusMessage) {
+        bonusMessage.textContent =
+            `${reason} Collect your ${bonusTotal} VampCoins!`;
+    }
+
+    if (collectButton) {
+        collectButton.disabled = false;
+    }
+}
+
+function collectBonus() {
+    if (!bonusActive) return;
 
     balance += bonusTotal;
 
-    saveGame();
-
-    bonusMessage.textContent =
-        "YOU COLLECTED " +
-        bonusTotal +
-        " VAMPCOINS!";
+    saveBalance();
+    updateDisplays();
 
     bonusActive = false;
 
-    bonusOverlay.classList.add("hidden");
-
-    message.textContent =
-        "BONUS COMPLETE!";
-
-    updateDisplay();
-
-    if (balance < bet) {
-
-        message.textContent =
-            "NOT ENOUGH VAMPCOINS!";
-
+    if (bonusOverlay) {
+        bonusOverlay.classList.remove("active");
     }
 
+    if (message) {
+        message.textContent =
+            `You collected ${bonusTotal} VampCoins!`;
+    }
+
+    if (spinButton) {
+        spinButton.disabled = false;
+    }
 }
 
+// ---------- BUTTON EVENTS ----------
 
-// ============================================
-// 20. BONUS BUTTONS
-// ============================================
+if (spinButton) {
+    spinButton.addEventListener("click", spin);
+}
 
-bonusSpinButton.addEventListener(
-    "click",
-    bonusSpin
-);
+if (bonusSpinButton) {
+    bonusSpinButton.addEventListener("click", bonusSpin);
+}
 
-collectButton.addEventListener(
-    "click",
-    collectBonus
-);
+if (collectButton) {
+    collectButton.addEventListener("click", collectBonus);
+}
 
+// ---------- START GAME ----------
 
-// ============================================
-// 21. RESET GAME
-// ============================================
+updateDisplays();
 
-resetButton.addEventListener("click", () => {
+if (reels) {
+    displayNormalGrid(createNormalGrid());
+}
 
-    if (
-        isSpinning ||
-        bonusActive
-    ) {
-        return;
-    }
+if (bonusOverlay) {
+    bonusOverlay.classList.remove("active");
+}
 
-    balance = 1000;
-
-    bet = 10;
-
-    message.textContent =
-        "GOOD LUCK...";
-
-    createGrid();
-
-    updateDisplay();
-
-});
-
-
-// ============================================
-// 22. START GAME
-// ============================================
-
-createGrid();
-
-updateDisplay();
+if (collectButton) {
+    collectButton.disabled = true;
+}
