@@ -623,6 +623,145 @@ body {
 
     .bonus-cell {
         padding: 2px;
+    } 
+
+/* ==================================
+   SCREEN FIT IMPROVEMENTS
+================================== */
+
+html {
+    height: 100%;
+}
+
+body {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+
+    overflow: hidden;
+    padding: 8px;
+}
+
+.game-container {
+    width: min(650px, 100%, calc(100dvh - 340px));
+    max-height: calc(100dvh - 16px);
+
+    padding: clamp(8px, 1.5vh, 18px);
+
+    overflow: hidden;
+}
+
+.game-header {
+    margin-bottom: 12px;
+}
+
+.game-header h1 {
+    font-size: clamp(20px, 4vh, 32px);
+}
+
+.game-header p {
+    margin-top: 4px;
+}
+
+.stats {
+    margin-bottom: 10px;
+    gap: 8px;
+}
+
+.stat-box {
+    padding: 8px;
+}
+
+.machine {
+    padding: 8px;
+}
+
+.machine-title {
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.reels {
+    gap: 5px;
+}
+
+.message {
+    margin: 8px 0;
+    min-height: 25px;
+    font-size: 15px;
+}
+
+.controls {
+    gap: 10px;
+}
+
+.bet-controls button {
+    width: 34px;
+    height: 34px;
+}
+
+.spin-button {
+    padding: 12px;
+    font-size: 21px;
+}
+
+.reset-button {
+    margin-top: 10px;
+    padding: 7px 15px;
+}
+
+/* Hide the paytable on shorter screens */
+
+@media (max-height: 850px) {
+    .paytable {
+        display: none;
     }
+}
+
+/* Bonus game screen fitting */
+
+.bonus-container {
+    width: min(580px, 100%, calc(100dvh - 300px));
+    max-height: calc(100dvh - 20px);
+    padding: clamp(8px, 1.5vh, 18px);
+    overflow: hidden;
+}
+
+.bonus-container h2 {
+    font-size: clamp(21px, 4vh, 30px);
+}
+
+.bonus-subtitle {
+    margin: 5px 0 10px;
+}
+
+.bonus-stats {
+    margin-bottom: 10px;
+}
+
+.bonus-grid {
+    gap: 5px;
+    padding: 6px;
+}
+
+.bonus-message {
+    margin: 8px 0;
+    min-height: 25px;
+}
+
+.bonus-spin-button {
+    padding: 12px;
+}
+
+@media (max-width: 450px) {
+    .game-container {
+        width: 100%;
+    }
+
+    .bonus-container {
+        width: 100%;
+    }
+}
+
 
 }
