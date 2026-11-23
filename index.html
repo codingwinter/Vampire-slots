@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Vampire Slots</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <main class="game-container">
+
+        <header class="game-header">
+            <h1>VAMPIRE SLOTS</h1>
+            <p>Enter the darkness...</p>
+        </header>
+
+        <!-- CURRENCY AND BET -->
+
+        <section class="stats">
+
+            <div class="stat-box">
+                <span>VAMPCOINS</span>
+                <strong id="balance">1000</strong>
+            </div>
+
+            <div class="stat-box">
+                <span>CURRENT BET</span>
+                <strong id="betDisplay">10</strong>
+            </div>
+
+        </section>
+
+        <!-- NORMAL SLOT MACHINE -->
+
+        <section class="machine">
+
+            <div class="machine-title">
+                NORMAL SPINS
+            </div>
+
+            <div class="reels" id="reels">
+            </div>
+
+        </section>
+
+        <div id="message" class="message">
+            GOOD LUCK...
+        </div>
+
+        <!-- CONTROLS -->
+
+        <section class="controls">
+
+            <div class="bet-controls">
+
+                <button id="decreaseBet">−</button>
+
+                <span>BET</span>
+
+                <button id="increaseBet">+</button>
+
+            </div>
+
+            <button id="spinButton" class="spin-button">
+                SPIN
+            </button>
+
+        </section>
+
+        <button id="resetButton" class="reset-button">
+            RESET GAME
+        </button>
+
+        <!-- PAYTABLE -->
+
+        <section class="paytable">
+
+            <h2>NORMAL PAYTABLE</h2>
+
+            <div class="pay-row">
+                <span>Fangs × 4</span>
+                <strong>100</strong>
+            </div>
+
+            <div class="pay-row">
+                <span>Blooddrop × 4</span>
+                <strong>50</strong>
+            </div>
+
+            <div class="pay-row">
+                <span>Bat × 4</span>
+                <strong>10</strong>
+            </div>
+
+            <div class="pay-row">
+                <span>Skull × 4</span>
+                <strong>10</strong>
+            </div>
+
+            <div class="pay-row">
+                <span>Eye × 4</span>
+                <strong>1,000</strong>
+            </div>
+
+            <div class="pay-row">
+                <span>Extra × 4</span>
+                <strong>BONUS GAME</strong>
+            </div>
+
+            <p>All amounts are in VampCoins.</p>
+
+        </section>
+
+    </main>
+
+
+    <!-- BONUS GAME POPUP -->
+
+    <div id="bonusOverlay" class="bonus-overlay hidden">
+
+        <div class="bonus-container">
+
+            <h2>EXTRA BONUS</h2>
+
+            <p class="bonus-subtitle">
+                LOCK YOUR PRIZES!
+            </p>
+
+            <div class="bonus-stats">
+
+                <div>
+                    <span>SPINS LEFT</span>
+                    <strong id="spinsLeft">20</strong>
+                </div>
+
+                <div>
+                    <span>BONUS WIN</span>
+                    <strong id="bonusWin">0</strong>
+                </div>
+
+            </div>
+
+            <div id="bonusGrid" class="bonus-grid">
+            </div>
+
+            <div id="bonusMessage" class="bonus-message">
+                COLLECT YOUR PRIZES!
+            </div>
+
+            <button id="bonusSpinButton" class="bonus-spin-button">
+                SPIN
+            </button>
+
+            <button id="collectButton" class="collect-button hidden">
+                COLLECT PRIZES
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+</html>
