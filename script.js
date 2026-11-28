@@ -1,34 +1,36 @@
 
 // ==========================================
 // VAMPIRE SLOTS
-// Main game and bonus game
-// Virtual VampCoins only - no real money
+// 4 columns x 3 rows
+// Virtual VampCoins only
 // ==========================================
 
-// ---------- GAME SETTINGS ----------
+// ---------- SETTINGS ----------
 
-let balance = Number(localStorage.getItem("vampireBalance")) || 1000;
+const COLUMNS = 4;
+const ROWS = 3;
+const TOTAL_CELLS = COLUMNS * ROWS;
+const BONUS_MAX_SPINS = 20;
+
+let savedBalance = localStorage.getItem("vampireBalance");
+let balance = savedBalance === null ? 1000 : Number(savedBalance);
 let bet = 10;
 
-const MAX_BET = 100;
 const MIN_BET = 1;
+const MAX_BET = 100;
 
-// Normal symbol weights add up to 100.
-// These give approximately a 17.5% chance
-// of at least one winning row per spin.
+// Normal game weights add up to 100.
 
 const normalSymbols = [
-    { name: "fangs", weight: 46, payout: 100 },
-    { name: "blooddrop", weight: 14, payout: 50 },
-    { name: "bat", weight: 10, payout: 10 },
-    { name: "extra", weight: 20, payout: 0 },
-    { name: "skull", weight: 7, payout: 10 },
-    { name: "eye", weight: 3, payout: 1000 }
+    { name: "fangs", weight: 46 },
+    { name: "blooddrop", weight: 14 },
+    { name: "bat", weight: 10 },
+    { name: "extra", weight: 20 },
+    { name: "skull", weight: 7 },
+    { name: "eye", weight: 3 }
 ];
 
-// Bonus game symbols.
-// Fangs do not lock and do not pay.
-// Coins and jackpots lock into place.
+// Bonus game weights.
 
 const bonusSymbols = [
     { name: "fangs", weight: 65, payout: 0 },
@@ -38,19 +40,19 @@ const bonusSymbols = [
     { name: "grand", weight: 1, payout: 1000 }
 ];
 
-const GRID_SIZE = 4;
-const BONUS_MAX_SPINS = 20;
-
 // ---------- HTML ELEMENTS ----------
 
 const balanceDisplay = document.getElementById("balance");
-const betDisplay = document.getElementById("bet");
+const betDisplay = document.getElementById("betDisplay");
 
 const reels = document.getElementById("reels");
 const message = document.getElementById("message");
 
 const spinButton = document.getElementById("spinButton");
 const resetButton = document.getElementById("resetButton");
+
+const decreaseBetButton = document.getElementById("decreaseBet");
+const increaseBetButton = document.getElementById("increaseBet");
 
 const bonusOverlay = document.getElementById("bonusOverlay");
 const bonusGrid = document.getElementById("bonusGrid");
@@ -61,20 +63,19 @@ const bonusMessage = document.getElementById("bonusMessage");
 const bonusSpinButton = document.getElementById("bonusSpinButton");
 const collectButton = document.getElementById("collectButton");
 
-const betUpButton = document.getElementById("betUp");
-const betDownButton = document.getElementById("betDown");
-
 // ---------- GAME VARIABLES ----------
 
 let isSpinning = false;
 let bonusActive = false;
+let bonusFinished = false;
 
 let bonusSpinsLeft = BONUS_MAX_SPINS;
 let bonusTotal = 0;
+
 let bonusCells = [];
 let collectedJackpots = [];
 
-// ---------- HELPER FUNCTIONS ----------
+// ---------- DISPLAY FUNCTIONS ----------
 
 function saveBalance() {
     localStorage.setItem("vampireBalance", balance);
@@ -98,6 +99,8 @@ function updateDisplays() {
     }
 }
 
+// ---------- RANDOM SYMBOL ----------
+
 function randomSymbol(symbolList) {
     const totalWeight = symbolList.reduce(
         (total, symbol) => total + symbol.weight,
@@ -117,38 +120,53 @@ function randomSymbol(symbolList) {
     return symbolList[0];
 }
 
-function createSymbolImage(symbolName) {
-    const img = document.createElement("img");
+// ---------- SYMBOL DISPLAY ----------
 
+function createSymbolContent(symbolName) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "symbol-content";
+
+    const label = document.createElement("span");
+    label.className = "symbol-label";
+    label.textContent = symbolName.toUpperCase();
+
+    const img = document.createElement("img");
     img.src = `assets/${symbolName}.png`;
     img.alt = symbolName;
     img.className = "symbol-image";
 
-    img.onerror = function () {
-        this.style.display = "none";
+    img.onload = function () {
+        label.style.display = "none";
     };
 
-    return img;
+    img.onerror = function () {
+        img.style.display = "block";
+        img.remove();
+    };
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(label);
+
+    return wrapper;
 }
 
-function createCell(symbolName, className = "symbol-cell") {
+function createNormalCell(symbolName) {
     const cell = document.createElement("div");
-    cell.className = className;
-
-    cell.appendChild(createSymbolImage(symbolName));
+    cell.className = "symbol";
+    cell.appendChild(createSymbolContent(symbolName));
 
     return cell;
 }
 
-// ---------- NORMAL GAME ----------
+// ---------- NORMAL GAME GRID ----------
 
 function createNormalGrid() {
     const grid = [];
 
-    for (let row = 0; row < GRID_SIZE; row++) {
+    for (let row = 0; row < ROWS; row++) {
         grid[row] = [];
 
-        for (let col = 0; col < GRID_SIZE; col++) {
+        for (let col = 0; col < COLUMNS; col++) {
             grid[row][col] = randomSymbol(normalSymbols);
         }
     }
@@ -161,57 +179,95 @@ function displayNormalGrid(grid) {
 
     reels.innerHTML = "";
 
-    for (let row = 0; row < GRID_SIZE; row++) {
-        for (let col = 0; col < GRID_SIZE; col++) {
-            const cell = createCell(grid[row][col].name);
-            reels.appendChild(cell);
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLUMNS; col++) {
+            reels.appendChild(
+                createNormalCell(grid[row][col].name)
+            );
         }
     }
 }
+
+// ---------- CHECK NORMAL WINS ----------
 
 function checkNormalWins(grid) {
     let totalWin = 0;
-    let extraTriggered = false;
-    let winningRows = 0;
+    const winningMessages = [];
+    const symbolCounts = {};
 
-    for (let row = 0; row < GRID_SIZE; row++) {
-        const firstSymbol = grid[row][0].name;
+    // Count all 12 symbols.
 
-        const isFullRow = grid[row].every(
-            symbol => symbol.name === firstSymbol
-        );
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLUMNS; col++) {
+            const name = grid[row][col].name;
 
-        if (!isFullRow) continue;
-
-        if (firstSymbol === "extra") {
-            extraTriggered = true;
-            continue;
-        }
-
-        const winningSymbol = normalSymbols.find(
-            symbol => symbol.name === firstSymbol
-        );
-
-        if (winningSymbol) {
-            totalWin += winningSymbol.payout;
-            winningRows++;
+            symbolCounts[name] = (symbolCounts[name] || 0) + 1;
         }
     }
 
+    // Two Bats anywhere pay 10 per complete pair.
+
+    const batPairs = Math.floor((symbolCounts.bat || 0) / 2);
+
+    if (batPairs > 0) {
+        const prize = batPairs * 10;
+        totalWin += prize;
+        winningMessages.push(`Bat pairs: ${prize}`);
+    }
+
+    // Two Skulls anywhere pay 10 per complete pair.
+
+    const skullPairs = Math.floor((symbolCounts.skull || 0) / 2);
+
+    if (skullPairs > 0) {
+        const prize = skullPairs * 10;
+        totalWin += prize;
+        winningMessages.push(`Skull pairs: ${prize}`);
+    }
+
+    // Fangs, Blooddrops and Eyes need four in a horizontal row.
+
+    const rowPayouts = {
+        fangs: 100,
+        blooddrop: 50,
+        eye: 1000
+    };
+
+    for (let row = 0; row < ROWS; row++) {
+        const firstSymbol = grid[row][0].name;
+
+        const fullRow = grid[row].every(
+            symbol => symbol.name === firstSymbol
+        );
+
+        if (fullRow && rowPayouts[firstSymbol]) {
+            const prize = rowPayouts[firstSymbol];
+
+            totalWin += prize;
+            winningMessages.push(`${firstSymbol}: ${prize}`);
+        }
+    }
+
+    // Three Extras anywhere trigger the bonus game.
+
+    const extraCount = symbolCounts.extra || 0;
+    const extraTriggered = extraCount >= 3;
+
     return {
         totalWin,
+        extraCount,
         extraTriggered,
-        winningRows
+        winningMessages
     };
 }
+
+// ---------- NORMAL SPIN ----------
 
 function spin() {
     if (isSpinning || bonusActive) return;
 
     if (balance < bet) {
-        if (message) {
-            message.textContent = "Not enough VampCoins!";
-        }
+        message.textContent = "NOT ENOUGH VAMPCOINS!";
         return;
     }
 
@@ -222,11 +278,8 @@ function spin() {
     saveBalance();
     updateDisplays();
 
-    if (message) {
-        message.textContent = "Spinning...";
-    }
+    message.textContent = "THE REELS ARE TURNING...";
 
-    // Short delay before showing the result.
     setTimeout(() => {
         const grid = createNormalGrid();
 
@@ -237,117 +290,101 @@ function spin() {
         if (result.totalWin > 0) {
             balance += result.totalWin;
 
-            if (message) {
-                message.textContent =
-                    `You won ${result.totalWin} VampCoins!`;
-            }
+            message.textContent =
+                `YOU WON ${result.totalWin} VAMPCOINS! ` +
+                result.winningMessages.join(" • ");
         } else if (result.extraTriggered) {
-            if (message) {
-                message.textContent = "BONUS! Four Extras!";
-            }
+            message.textContent =
+                `${result.extraCount} EXTRAS! ENTERING THE BONUS...`;
         } else {
-            if (message) {
-                message.textContent = "No win. Try again!";
-            }
+            message.textContent = "NO WIN. TRY AGAIN...";
         }
 
+        // Save any normal-game winnings.
         saveBalance();
         updateDisplays();
 
         isSpinning = false;
-        spinButton.disabled = false;
 
-        // Bonus starts after the normal spin.
+        // Three Extras start the bonus game.
         if (result.extraTriggered) {
-            setTimeout(startBonusGame, 700);
+            spinButton.disabled = true;
+            setTimeout(startBonusGame, 500);
+        } else {
+            spinButton.disabled = false;
         }
 
-    }, 800);
+    }, 700);
 }
 
-// ---------- BET CONTROLS ----------
+// ---------- BET BUTTONS ----------
 
-if (betUpButton) {
-    betUpButton.addEventListener("click", () => {
-        if (isSpinning || bonusActive) return;
+increaseBetButton.addEventListener("click", () => {
+    if (isSpinning || bonusActive) return;
 
-        bet = Math.min(MAX_BET, bet + 1);
-        updateDisplays();
-    });
-}
+    bet = Math.min(MAX_BET, bet + 1);
+    updateDisplays();
+});
 
-if (betDownButton) {
-    betDownButton.addEventListener("click", () => {
-        if (isSpinning || bonusActive) return;
+decreaseBetButton.addEventListener("click", () => {
+    if (isSpinning || bonusActive) return;
 
-        bet = Math.max(MIN_BET, bet - 1);
-        updateDisplays();
-    });
-}
+    bet = Math.max(MIN_BET, bet - 1);
+    updateDisplays();
+});
 
 // ---------- RESET BUTTON ----------
 
-if (resetButton) {
-    resetButton.addEventListener("click", () => {
-        if (isSpinning || bonusActive) return;
+resetButton.addEventListener("click", () => {
+    if (isSpinning || bonusActive) return;
 
-        balance = 1000;
-        bet = 10;
+    balance = 1000;
+    bet = 10;
 
-        saveBalance();
-        updateDisplays();
+    saveBalance();
+    updateDisplays();
 
-        if (message) {
-            message.textContent = "Game reset. Good luck!";
-        }
-    });
-}
+    message.textContent = "GAME RESET. ENTER THE DARKNESS...";
+});
 
-// ---------- BONUS GAME ----------
+// ---------- START BONUS GAME ----------
 
 function startBonusGame() {
     bonusActive = true;
+    bonusFinished = false;
 
     bonusSpinsLeft = BONUS_MAX_SPINS;
     bonusTotal = 0;
 
     collectedJackpots = [];
 
-    // All 16 bonus positions start unlocked.
-    bonusCells = Array(GRID_SIZE * GRID_SIZE).fill(null);
+    // Create 12 empty bonus positions.
 
-    if (bonusOverlay) {
-        bonusOverlay.classList.add("active");
-    }
+    bonusCells = Array(TOTAL_CELLS).fill(null);
 
-    if (bonusMessage) {
-        bonusMessage.textContent =
-            "Lock in prizes! Fangs disappear without a prize.";
-    }
+    bonusOverlay.classList.add("active");
 
-    if (bonusSpinButton) {
-        bonusSpinButton.disabled = false;
-    }
+    bonusMessage.textContent =
+        "LOCK IN PRIZES! FANGS DO NOT LOCK.";
 
-    if (collectButton) {
-        collectButton.disabled = true;
-    }
+    bonusSpinButton.disabled = false;
+    collectButton.disabled = true;
 
     displayBonusGrid();
     updateDisplays();
 }
 
-function displayBonusGrid() {
-    if (!bonusGrid) return;
+// ---------- BONUS GRID DISPLAY ----------
 
+function displayBonusGrid() {
     bonusGrid.innerHTML = "";
 
-    bonusCells.forEach((symbolName, index) => {
+    bonusCells.forEach(symbolName => {
         const cell = document.createElement("div");
 
-        if (symbolName) {
+        if (symbolName !== null) {
             cell.className = "bonus-cell locked";
-            cell.appendChild(createSymbolImage(symbolName));
+            cell.appendChild(createSymbolContent(symbolName));
         } else {
             cell.className = "bonus-cell unlocked";
             cell.textContent = "?";
@@ -357,12 +394,15 @@ function displayBonusGrid() {
     });
 }
 
+// ---------- BONUS SYMBOL SELECTION ----------
+
 function getAvailableBonusSymbols() {
     return bonusSymbols.filter(symbol => {
-        if (
-            ["mini", "major", "grand"].includes(symbol.name) &&
-            collectedJackpots.includes(symbol.name)
-        ) {
+        const isJackpot = ["mini", "major", "grand"].includes(
+            symbol.name
+        );
+
+        if (isJackpot && collectedJackpots.includes(symbol.name)) {
             return false;
         }
 
@@ -370,50 +410,55 @@ function getAvailableBonusSymbols() {
     });
 }
 
+// ---------- BONUS SPIN ----------
+
 function bonusSpin() {
-    if (!bonusActive || bonusSpinsLeft <= 0) return;
+    if (!bonusActive || bonusFinished || bonusSpinsLeft <= 0) {
+        return;
+    }
 
     const unlockedPositions = [];
 
-    bonusCells.forEach((cell, index) => {
-        if (cell === null) {
+    bonusCells.forEach((symbolName, index) => {
+        if (symbolName === null) {
             unlockedPositions.push(index);
         }
     });
 
     if (unlockedPositions.length === 0) {
-        endBonusGame("All positions are locked!");
+        endBonusGame("ALL POSITIONS ARE LOCKED!");
         return;
     }
 
-    if (bonusSpinButton) {
-        bonusSpinButton.disabled = true;
-    }
+    bonusSpinButton.disabled = true;
 
     bonusSpinsLeft--;
 
-    let newPrizes = 0;
     let newLocks = 0;
+    let newPrizes = 0;
 
     unlockedPositions.forEach(index => {
         const symbol = randomSymbol(getAvailableBonusSymbols());
 
-        // Fangs are a blank result.
-        // They do not lock the position.
+        // Fangs are blank: no prize and no lock.
+
         if (symbol.name === "fangs") {
             return;
         }
 
-        // Lock the prize into this position.
+        // Lock the prize into its position.
+
         bonusCells[index] = symbol.name;
+
         newLocks++;
-
-        bonusTotal += symbol.payout;
         newPrizes += symbol.payout;
+        bonusTotal += symbol.payout;
 
-        // Each jackpot can only be collected once.
+        // Mini, Major and Grand can each be won once.
+
         if (
-            ["mini", "major", "grand"].includes(symbol.name)
+            ["mini", "major", "grand"].includes(symbol.name) &&
+            !collectedJackpots.includes(symbol.name)
         ) {
             collectedJackpots.push(symbol.name);
         }
@@ -422,54 +467,47 @@ function bonusSpin() {
     displayBonusGrid();
     updateDisplays();
 
-    if (bonusMessage) {
-        if (newLocks === 0) {
-            bonusMessage.textContent =
-                "No prizes locked! Spin again.";
-        } else {
-            bonusMessage.textContent =
-                `You locked ${newLocks} prize(s)! Added ${newPrizes} VampCoins.`;
-        }
+    if (newLocks === 0) {
+        bonusMessage.textContent =
+            "NO PRIZES LOCKED THIS TIME. TRY AGAIN!";
+    } else {
+        bonusMessage.textContent =
+            `YOU LOCKED ${newLocks} PRIZES! +${newPrizes} VAMPCOINS`;
     }
 
-    // End if all 16 positions are locked.
-    const allLocked = bonusCells.every(cell => cell !== null);
+    const allLocked = bonusCells.every(
+        symbolName => symbolName !== null
+    );
 
     if (allLocked) {
-        endBonusGame("Amazing! All 16 positions are locked!");
+        endBonusGame("ALL 12 POSITIONS ARE LOCKED!");
         return;
     }
 
-    // End when the 20 spins have been used.
     if (bonusSpinsLeft <= 0) {
-        endBonusGame("Bonus spins finished!");
+        endBonusGame("YOUR 20 BONUS SPINS ARE FINISHED!");
         return;
     }
 
-    if (bonusSpinButton) {
-        bonusSpinButton.disabled = false;
-    }
+    bonusSpinButton.disabled = false;
 }
 
 // ---------- END BONUS GAME ----------
 
 function endBonusGame(reason) {
-    if (bonusSpinButton) {
-        bonusSpinButton.disabled = true;
-    }
+    bonusFinished = true;
 
-    if (bonusMessage) {
-        bonusMessage.textContent =
-            `${reason} Collect your ${bonusTotal} VampCoins!`;
-    }
+    bonusSpinButton.disabled = true;
+    collectButton.disabled = false;
 
-    if (collectButton) {
-        collectButton.disabled = false;
-    }
+    bonusMessage.textContent =
+        `${reason} COLLECT ${bonusTotal} VAMPCOINS!`;
 }
 
+// ---------- COLLECT BONUS ----------
+
 function collectBonus() {
-    if (!bonusActive) return;
+    if (!bonusActive || !bonusFinished) return;
 
     balance += bonusTotal;
 
@@ -477,47 +515,29 @@ function collectBonus() {
     updateDisplays();
 
     bonusActive = false;
+    bonusFinished = false;
 
-    if (bonusOverlay) {
-        bonusOverlay.classList.remove("active");
-    }
+    bonusOverlay.classList.remove("active");
 
-    if (message) {
-        message.textContent =
-            `You collected ${bonusTotal} VampCoins!`;
-    }
+    message.textContent =
+        `YOU COLLECTED ${bonusTotal} VAMPCOINS!`;
 
-    if (spinButton) {
-        spinButton.disabled = false;
-    }
+    spinButton.disabled = false;
 }
 
 // ---------- BUTTON EVENTS ----------
 
-if (spinButton) {
-    spinButton.addEventListener("click", spin);
-}
+spinButton.addEventListener("click", spin);
 
-if (bonusSpinButton) {
-    bonusSpinButton.addEventListener("click", bonusSpin);
-}
+bonusSpinButton.addEventListener("click", bonusSpin);
 
-if (collectButton) {
-    collectButton.addEventListener("click", collectBonus);
-}
+collectButton.addEventListener("click", collectBonus);
 
-// ---------- START GAME ----------
+// ---------- START THE GAME ----------
 
 updateDisplays();
 
-if (reels) {
-    displayNormalGrid(createNormalGrid());
-}
+displayNormalGrid(createNormalGrid());
 
-if (bonusOverlay) {
-    bonusOverlay.classList.remove("active");
-}
-
-if (collectButton) {
-    collectButton.disabled = true;
-}
+bonusOverlay.classList.remove("active");
+collectButton.disabled = true;
