@@ -22,11 +22,11 @@ const MAX_BET = 100;
 // Normal game weights add up to 100.
 
 const normalSymbols = [
-    { name: "fangs", weight: 46 },
-    { name: "blooddrop", weight: 14 },
+    { name: "fangs", weight: 55 },
+    { name: "blooddrop", weight: 18 },
     { name: "bat", weight: 10 },
-    { name: "extra", weight: 20 },
-    { name: "skull", weight: 7 },
+    { name: "extra", weight: 8 },
+    { name: "skull", weight: 6 },
     { name: "eye", weight: 3 }
 ];
 
