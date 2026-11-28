@@ -185,11 +185,96 @@ function displayNormalGrid(grid) {
     }
 }
 
+// Change the symbol shown inside one existing cell.
+function setNormalCellSymbol(cell, symbolName) {
+    cell.replaceChildren(createSymbolContent(symbolName));
+}
+
+// Spin all four vertical reels, then stop them one at a time.
+// Reel 1 is positions 1, 5, 9.
+// Reel 2 is positions 2, 6, 10.
+// Reel 3 is positions 3, 7, 11.
+// Reel 4 is positions 4, 8, 12.
+
+function animateNormalSpin(finalGrid) {
+    return new Promise(resolve => {
+        const cells = Array.from(reels.children);
+        const spinIntervals = [];
+
+        const stopDelay = 900;
+        const delayBetweenReels = 350;
+        const symbolChangeSpeed = 75;
+
+        // Start all four vertical reels spinning together.
+
+        for (let col = 0; col < COLUMNS; col++) {
+            for (let row = 0; row < ROWS; row++) {
+                cells[row * COLUMNS + col].classList.remove(
+                    "winning", "reel-stop"
+                );
+
+                cells[row * COLUMNS + col].classList.add(
+                    "reel-spinning"
+                );
+            }
+
+            const interval = setInterval(() => {
+                for (let row = 0; row < ROWS; row++) {
+                    const cell = cells[row * COLUMNS + col];
+                    const symbol = randomSymbol(normalSymbols);
+
+                    setNormalCellSymbol(cell, symbol.name);
+                }
+            }, symbolChangeSpeed);
+
+            spinIntervals[col] = interval;
+        }
+
+        // Stop the vertical reels from left to right.
+
+        for (let col = 0; col < COLUMNS; col++) {
+            const thisReelDelay =
+                stopDelay + col * delayBetweenReels;
+
+            setTimeout(() => {
+                clearInterval(spinIntervals[col]);
+
+                for (let row = 0; row < ROWS; row++) {
+                    const cell = cells[row * COLUMNS + col];
+
+                    setNormalCellSymbol(
+                        cell,
+                        finalGrid[row][col].name
+                    );
+
+                    cell.classList.remove("reel-spinning");
+                    cell.classList.add("reel-stop");
+                }
+            }, thisReelDelay);
+        }
+
+        // Wait until the fourth reel has stopped and settled.
+
+        const totalAnimationTime =
+            stopDelay + (COLUMNS - 1) * delayBetweenReels + 220;
+
+        setTimeout(() => {
+            cells.forEach(cell => {
+                cell.classList.remove("reel-stop");
+            });
+
+            resolve();
+        }, totalAnimationTime);
+    });
+}
+
 // ---------- CHECK NORMAL WINS ----------
 
 function checkNormalWins(grid) {
     let totalWin = 0;
+
     const winningMessages = [];
+    const winningRows = [];
     const symbolCounts = {};
 
     // Count all 12 symbols.
@@ -224,6 +309,7 @@ function checkNormalWins(grid) {
 
             totalWin += prize;
             winningMessages.push(`${firstSymbol}: ${prize}`);
+            winningRows.push(row);
         }
     }
 
@@ -236,13 +322,14 @@ function checkNormalWins(grid) {
         totalWin,
         extraCount,
         extraTriggered,
-        winningMessages
+        winningMessages,
+        winningRows
     };
 }
 
 // ---------- NORMAL SPIN ----------
 
-function spin() {
+async function spin() {
     if (isSpinning || bonusActive) return;
 
     if (balance < bet) {
@@ -259,51 +346,67 @@ function spin() {
 
     message.textContent = "THE REELS ARE TURNING...";
 
-    setTimeout(() => {
-        try {
-            const grid = createNormalGrid();
+    try {
+        // Decide the final result before the animation begins.
 
-            displayNormalGrid(grid);
+        const grid = createNormalGrid();
 
-            const result = checkNormalWins(grid);
+        // Animate the four vertical reels and stop them left to right.
 
-            if (result.totalWin > 0) {
-                balance += result.totalWin;
+        await animateNormalSpin(grid);
 
-                message.textContent =
-                    `YOU WON ${result.totalWin} VAMPCOINS! ` +
-                    result.winningMessages.join(" • ");
-            } else if (result.extraTriggered) {
-                message.textContent =
-                    `${result.extraCount} EXTRAS! ENTERING THE BONUS...`;
-            } else {
-                message.textContent = "NO WIN. TRY AGAIN...";
+        const result = checkNormalWins(grid);
+
+        // Highlight all four symbols in each winning horizontal line.
+
+        result.winningRows.forEach(row => {
+            for (let col = 0; col < COLUMNS; col++) {
+                const cell = reels.children[row * COLUMNS + col];
+
+                if (cell) {
+                    cell.classList.add("winning");
+                }
             }
+        });
 
-            saveBalance();
-            updateDisplays();
+        if (result.totalWin > 0) {
+            balance += result.totalWin;
 
-            isSpinning = false;
+            message.textContent =
+                `YOU WON ${result.totalWin} VAMPCOINS! ` +
+                result.winningMessages.join(" • ");
 
-            // Three Extras start the bonus game.
+        } else if (result.extraTriggered) {
+            message.textContent =
+                `${result.extraCount} EXTRAS! ENTERING THE BONUS...`;
 
-            if (result.extraTriggered) {
-                spinButton.disabled = true;
-                setTimeout(startBonusGame, 500);
-            } else {
-                spinButton.disabled = false;
-            }
-
-        } catch (error) {
-            console.error("Vampire Slots spin error:", error);
-
-            isSpinning = false;
-            spinButton.disabled = false;
-
-            message.textContent = "SOMETHING WENT WRONG. PLEASE TRY AGAIN.";
+        } else {
+            message.textContent = "NO WIN. TRY AGAIN...";
         }
 
-    }, 700);
+        saveBalance();
+        updateDisplays();
+
+        isSpinning = false;
+
+        // Three Extras start the bonus game.
+
+        if (result.extraTriggered) {
+            spinButton.disabled = true;
+            setTimeout(startBonusGame, 500);
+        } else {
+            spinButton.disabled = false;
+        }
+
+    } catch (error) {
+        console.error("Vampire Slots spin error:", error);
+
+        isSpinning = false;
+        spinButton.disabled = false;
+
+        message.textContent =
+            "SOMETHING WENT WRONG. PLEASE TRY AGAIN.";
+    }
 }
 
 // ---------- BET BUTTONS ----------
@@ -343,7 +446,8 @@ resetButton.addEventListener("click", () => {
     saveBalance();
     updateDisplays();
 
-    message.textContent = "GAME RESET. ENTER THE DARKNESS...";
+    message.textContent =
+        "GAME RESET. ENTER THE DARKNESS...";
 });
 
 // ---------- START BONUS GAME ----------

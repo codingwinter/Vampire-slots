@@ -487,4 +487,121 @@ body {
     .bonus-container {
         padding: 11px;
     }
+
+
+/* =====================================
+   SLOT SPIN + WIN ANIMATIONS
+   ===================================== */
+
+/* The four vertical reels visibly move while spinning. */
+
+.symbol.reel-spinning {
+    animation: reel-shake 0.12s linear infinite;
+    filter: brightness(1.12);
+}
+
+.symbol.reel-spinning .symbol-content {
+    animation: symbol-flash 0.12s linear infinite;
+}
+
+/* Small settling movement when an individual reel stops. */
+
+.symbol.reel-stop {
+    animation: reel-settle 0.28s ease-out;
+}
+
+/* Winning horizontal lines glow and pulse. */
+
+.symbol.winning {
+    position: relative;
+    z-index: 1;
+    border: 2px solid #ffffff;
+    box-shadow:
+        0 0 7px #ffffff,
+        0 0 15px rgba(255,255,255,0.9),
+        inset 0 0 12px rgba(255,255,255,0.75);
+    animation: winning-pulse 0.9s ease-in-out infinite;
+}
+
+/* SPINNING MOVEMENT */
+
+@keyframes reel-shake {
+    0% {
+        transform: translateY(-2px);
+    }
+
+    50% {
+        transform: translateY(2px);
+    }
+
+    100% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes symbol-flash {
+    0% {
+        filter: blur(1.5px);
+        opacity: 0.75;
+    }
+
+    50% {
+        filter: blur(0);
+        opacity: 1;
+    }
+
+    100% {
+        filter: blur(1.5px);
+        opacity: 0.75;
+    }
+}
+
+/* REEL STOPPING MOVEMENT */
+
+@keyframes reel-settle {
+    0% {
+        transform: scale(1.08);
+    }
+
+    65% {
+        transform: scale(0.96);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* WINNING SYMBOL GLOW */
+
+@keyframes winning-pulse {
+    0%, 100% {
+        filter: brightness(1);
+        box-shadow:
+            0 0 5px #ffffff,
+            0 0 10px rgba(255,255,255,0.65),
+            inset 0 0 7px rgba(255,255,255,0.45);
+    }
+
+    50% {
+        filter: brightness(1.3);
+        box-shadow:
+            0 0 10px #ffffff,
+            0 0 22px rgba(255,255,255,1),
+            inset 0 0 15px rgba(255,255,255,0.9);
+    }
+}
+
+/* ACCESSIBILITY: REDUCE MOTION */
+
+@media (prefers-reduced-motion: reduce) {
+    .symbol.reel-spinning,
+    .symbol.reel-spinning .symbol-content,
+    .symbol.reel-stop,
+    .symbol.winning {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+    }
+}
+
 }
