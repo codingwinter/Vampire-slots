@@ -138,7 +138,6 @@ function createSymbolContent(symbolName) {
     };
 
     img.onerror = function () {
-        img.style.display = "block";
         img.remove();
     };
 
@@ -203,25 +202,7 @@ function checkNormalWins(grid) {
         }
     }
 
-    // Two Bats anywhere pay 0 per complete pair.
-
-    const batPairs = Math.floor((symbolCounts.bat || 0) / 2);
-
-    if (batPairs > 0) {
-        const prize = rowPayouts[firstSymbol] * (bet / 20);
-        totalWin += prize;
-        winningMessages.push(`Bat pairs: ${prize}`);
-    }
-
-    // Two Skulls anywhere pay 0 per complete pair.
-
-    const skullPairs = Math.floor((symbolCounts.skull || 0) / 2);
-
-    if (skullPairs > 0) {
-        const prize = rowPayouts[firstSymbol] * (bet / 20);
-        totalWin += prize;
-        winningMessages.push(`Skull pairs: ${prize}`);
-    }
+    // Bats and Skulls currently pay nothing.
 
     // Fangs, Blooddrops and Eyes need four in a horizontal row.
 
@@ -239,7 +220,7 @@ function checkNormalWins(grid) {
         );
 
         if (fullRow && rowPayouts[firstSymbol]) {
-            const prize = rowPayouts[firstSymbol];
+            const prize = rowPayouts[firstSymbol] * (bet / 20);
 
             totalWin += prize;
             winningMessages.push(`${firstSymbol}: ${prize}`);
@@ -279,43 +260,53 @@ function spin() {
     message.textContent = "THE REELS ARE TURNING...";
 
     setTimeout(() => {
-        const grid = createNormalGrid();
+        try {
+            const grid = createNormalGrid();
 
-        displayNormalGrid(grid);
+            displayNormalGrid(grid);
 
-        const result = checkNormalWins(grid);
+            const result = checkNormalWins(grid);
 
-        if (result.totalWin > 0) {
-            balance += result.totalWin;
+            if (result.totalWin > 0) {
+                balance += result.totalWin;
 
-            message.textContent =
-                `YOU WON ${result.totalWin} VAMPCOINS! ` +
-                result.winningMessages.join(" • ");
-        } else if (result.extraTriggered) {
-            message.textContent =
-                `${result.extraCount} EXTRAS! ENTERING THE BONUS...`;
-        } else {
-            message.textContent = "NO WIN. TRY AGAIN...";
-        }
+                message.textContent =
+                    `YOU WON ${result.totalWin} VAMPCOINS! ` +
+                    result.winningMessages.join(" • ");
+            } else if (result.extraTriggered) {
+                message.textContent =
+                    `${result.extraCount} EXTRAS! ENTERING THE BONUS...`;
+            } else {
+                message.textContent = "NO WIN. TRY AGAIN...";
+            }
 
-        // Save any normal-game winnings.
-        saveBalance();
-        updateDisplays();
+            saveBalance();
+            updateDisplays();
 
-        isSpinning = false;
+            isSpinning = false;
 
-        // Three Extras start the bonus game.
-        if (result.extraTriggered) {
-            spinButton.disabled = true;
-            setTimeout(startBonusGame, 500);
-        } else {
+            // Three Extras start the bonus game.
+
+            if (result.extraTriggered) {
+                spinButton.disabled = true;
+                setTimeout(startBonusGame, 500);
+            } else {
+                spinButton.disabled = false;
+            }
+
+        } catch (error) {
+            console.error("Vampire Slots spin error:", error);
+
+            isSpinning = false;
             spinButton.disabled = false;
+
+            message.textContent = "SOMETHING WENT WRONG. PLEASE TRY AGAIN.";
         }
 
     }, 700);
 }
 
-// // ---------- BET BUTTONS ----------
+// ---------- BET BUTTONS ----------
 
 increaseBetButton.addEventListener("click", () => {
     if (isSpinning || bonusActive) return;
