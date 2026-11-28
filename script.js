@@ -1,9 +1,6 @@
-
-// ==========================================
 // VAMPIRE SLOTS
 // 4 columns x 3 rows
 // Virtual VampCoins only
-// ==========================================
 
 // ---------- SETTINGS ----------
 
@@ -13,11 +10,12 @@ const TOTAL_CELLS = COLUMNS * ROWS;
 const BONUS_MAX_SPINS = 20;
 
 let savedBalance = localStorage.getItem("vampireBalance");
-let balance = savedBalance === null ? 1000 : Number(savedBalance);
-let bet = 10;
+let balance = savedBalance === null ? 100 : Number(savedBalance);
+let bet = 20;
 
-const MIN_BET = 1;
-const MAX_BET = 100;
+const BET_LEVELS = [20, 40, 60, 80, 100, 150, 200];
+const MIN_BET = 20;
+const MAX_BET = 200;
 
 // Normal game weights add up to 100.
 
@@ -205,22 +203,22 @@ function checkNormalWins(grid) {
         }
     }
 
-    // Two Bats anywhere pay 10 per complete pair.
+    // Two Bats anywhere pay 0 per complete pair.
 
     const batPairs = Math.floor((symbolCounts.bat || 0) / 2);
 
     if (batPairs > 0) {
-        const prize = batPairs * 10;
+        const prize = rowPayouts[firstSymbol] * (bet / 20);
         totalWin += prize;
         winningMessages.push(`Bat pairs: ${prize}`);
     }
 
-    // Two Skulls anywhere pay 10 per complete pair.
+    // Two Skulls anywhere pay 0 per complete pair.
 
     const skullPairs = Math.floor((symbolCounts.skull || 0) / 2);
 
     if (skullPairs > 0) {
-        const prize = skullPairs * 10;
+        const prize = rowPayouts[firstSymbol] * (bet / 20);
         totalWin += prize;
         winningMessages.push(`Skull pairs: ${prize}`);
     }
@@ -317,19 +315,29 @@ function spin() {
     }, 700);
 }
 
-// ---------- BET BUTTONS ----------
+// // ---------- BET BUTTONS ----------
 
 increaseBetButton.addEventListener("click", () => {
     if (isSpinning || bonusActive) return;
 
-    bet = Math.min(MAX_BET, bet + 1);
+    const currentIndex = BET_LEVELS.indexOf(bet);
+
+    if (currentIndex < BET_LEVELS.length - 1) {
+        bet = BET_LEVELS[currentIndex + 1];
+    }
+
     updateDisplays();
 });
 
 decreaseBetButton.addEventListener("click", () => {
     if (isSpinning || bonusActive) return;
 
-    bet = Math.max(MIN_BET, bet - 1);
+    const currentIndex = BET_LEVELS.indexOf(bet);
+
+    if (currentIndex > 0) {
+        bet = BET_LEVELS[currentIndex - 1];
+    }
+
     updateDisplays();
 });
 
@@ -338,8 +346,8 @@ decreaseBetButton.addEventListener("click", () => {
 resetButton.addEventListener("click", () => {
     if (isSpinning || bonusActive) return;
 
-    balance = 1000;
-    bet = 10;
+    balance = 100;
+    bet = 20;
 
     saveBalance();
     updateDisplays();
