@@ -129,7 +129,7 @@ function createSymbolContent(symbolName) {
     label.textContent = symbolName.toUpperCase();
 
     const img = document.createElement("img");
-    img.src = `assets/${symbolName}.png`;
+    img.src = `assets/${symbolName}.PNG`;
     img.alt = symbolName;
     img.className = "symbol-image";
 
@@ -213,7 +213,7 @@ function setNormalCellSymbol(cell, symbolName) {
             if (label) label.style.display = "none";
         };
 
-        img.src = `assets/${symbolName}.png`;
+        img.src = `assets/${symbolName}.PNG`;
         img.alt = symbolName;
     }
 }
@@ -231,7 +231,7 @@ function animateNormalSpin(finalGrid) {
         // Preload the symbol images so they are ready during the spin.
         normalSymbols.forEach(symbol => {
             const image = new Image();
-            image.src = `assets/${symbol.name}.png`;
+            image.src = `assets/${symbol.name}.PNG`;
         });
 
         // Clear any previous win highlights.
