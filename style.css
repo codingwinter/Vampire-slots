@@ -442,7 +442,10 @@ body {
     margin-top: 15px;
 }
 
-/* MOBILE */
+
+/* =====================================
+   MOBILE
+   ===================================== */
 
 @media (max-width: 450px) {
     body {
@@ -487,14 +490,11 @@ body {
     .bonus-container {
         padding: 11px;
     }
-
-
+}
 
 /* =====================================
    SMOOTHER SLOT SPIN ANIMATIONS
    ===================================== */
-
-/* Keep the symbols moving while their reel spins. */
 
 .symbol.reel-spinning {
     overflow: hidden;
@@ -505,8 +505,6 @@ body {
     animation: smooth-symbol-roll 0.22s ease-in-out infinite;
     will-change: transform;
 }
-
-/* Gentle vertical rolling motion. */
 
 @keyframes smooth-symbol-roll {
     0% {
@@ -525,63 +523,7 @@ body {
     }
 }
 
-/* Small bounce when each reel stops. */
-
-.symbol.reel-stop {
-    animation: reel-settle 0.3s ease-out;
-}
-
-@keyframes reel-settle {
-    0% {
-        transform: scale(1.08);
-    }
-
-    60% {
-        transform: scale(0.96);
-    }
-
-    100% {
-        transform: scale(1);
-    }
-}
-
-
-/* =====================================
-   SMOOTHER SLOT SPIN ANIMATIONS
-   ===================================== */
-
-/* Keep the symbols moving while their reel spins. */
-
-.symbol.reel-spinning {
-    overflow: hidden;
-    filter: brightness(1.08);
-}
-
-.symbol.reel-spinning .symbol-content {
-    animation: smooth-symbol-roll 0.22s ease-in-out infinite;
-    will-change: transform;
-}
-
-/* Gentle vertical rolling motion. */
-
-@keyframes smooth-symbol-roll {
-    0% {
-        transform: translateY(-12%) scaleY(1.04);
-        opacity: 0.75;
-    }
-
-    50% {
-        transform: translateY(0%) scaleY(1);
-        opacity: 1;
-    }
-
-    100% {
-        transform: translateY(12%) scaleY(1.04);
-        opacity: 0.75;
-    }
-}
-
-/* Small bounce when each reel stops. */
+/* REEL STOPPING */
 
 .symbol.reel-stop {
     animation: reel-settle 0.3s ease-out;
@@ -608,11 +550,8 @@ body {
 .symbol.winning {
     position: relative;
     z-index: 5;
-
     border: 3px solid #ffffff !important;
-
     outline: 2px solid #ffffff;
-
     filter: brightness(1.35);
 
     box-shadow:
@@ -646,6 +585,8 @@ body {
             inset 0 0 20px #ffffff;
     }
 }
+
+/* ACCESSIBILITY */
 
 @media (prefers-reduced-motion: reduce) {
     .symbol.reel-spinning .symbol-content,
