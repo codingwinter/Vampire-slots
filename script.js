@@ -186,9 +186,119 @@ function displayNormalGrid(grid) {
 }
 
 // Change the symbol shown inside one existing cell.
+
+// Update an existing symbol without rebuilding its HTML.
+// This avoids repeatedly destroying and reloading the images.
 function setNormalCellSymbol(cell, symbolName) {
-    cell.replaceChildren(createSymbolContent(symbolName));
+    const content = cell.querySelector(".symbol-content");
+
+    if (!content) return;
+
+    const label = content.querySelector(".symbol-label");
+    const img = content.querySelector(".symbol-image");
+
+    if (label) {
+        label.textContent = symbolName.toUpperCase();
+        label.style.display = "block";
+    }
+
+    if (img) {
+        img.onerror = function () {
+            img.style.display = "none";
+            if (label) label.style.display = "block";
+        };
+
+        img.onload = function () {
+            img.style.display = "block";
+            if (label) label.style.display = "none";
+        };
+
+        img.src = `assets/${symbolName}.png`;
+        img.alt = symbolName;
+    }
 }
+
+// Spin the four vertical reels and stop them one at a time.
+function animateNormalSpin(finalGrid) {
+    return new Promise(resolve => {
+        const cells = Array.from(reels.children);
+        const intervals = [];
+
+        const symbolChangeSpeed = 140;
+        const firstStop = 1100;
+        const delayBetweenReels = 450;
+
+        // Preload the symbol images so they are ready during the spin.
+        normalSymbols.forEach(symbol => {
+            const image = new Image();
+            image.src = `assets/${symbol.name}.png`;
+        });
+
+        // Clear any previous win highlights.
+        cells.forEach(cell => {
+            cell.classList.remove(
+                "winning",
+                "reel-stop",
+                "reel-spinning"
+            );
+        });
+
+        // Start all four vertical reels.
+        for (let col = 0; col < COLUMNS; col++) {
+            for (let row = 0; row < ROWS; row++) {
+                const cell = cells[row * COLUMNS + col];
+
+                cell.classList.add("reel-spinning");
+            }
+
+            // Change the symbols while the reel is moving.
+            intervals[col] = setInterval(() => {
+                for (let row = 0; row < ROWS; row++) {
+                    const cell = cells[row * COLUMNS + col];
+                    const symbol = randomSymbol(normalSymbols);
+
+                    setNormalCellSymbol(cell, symbol.name);
+                }
+            }, symbolChangeSpeed);
+        }
+
+        // Stop each vertical reel from left to right.
+        for (let col = 0; col < COLUMNS; col++) {
+            const stopTime = firstStop + col * delayBetweenReels;
+
+            setTimeout(() => {
+                clearInterval(intervals[col]);
+
+                for (let row = 0; row < ROWS; row++) {
+                    const cell = cells[row * COLUMNS + col];
+
+                    setNormalCellSymbol(
+                        cell,
+                        finalGrid[row][col].name
+                    );
+
+                    cell.classList.remove("reel-spinning");
+                    cell.classList.add("reel-stop");
+                }
+            }, stopTime);
+        }
+
+        // Wait until all four reels have stopped.
+        const totalTime =
+            firstStop +
+            (COLUMNS - 1) * delayBetweenReels +
+            300;
+
+        setTimeout(() => {
+            cells.forEach(cell => {
+                cell.classList.remove("reel-stop");
+            });
+
+            resolve();
+        }, totalTime);
+    });
+}
+
 
 // Spin all four vertical reels, then stop them one at a time.
 // Reel 1 is positions 1, 5, 9.
@@ -359,15 +469,23 @@ async function spin() {
 
         // Highlight all four symbols in each winning horizontal line.
 
-        result.winningRows.forEach(row => {
-            for (let col = 0; col < COLUMNS; col++) {
-                const cell = reels.children[row * COLUMNS + col];
+        
+// Highlight all four symbols in every winning horizontal line.
+result.winningRows.forEach(row => {
+    for (let col = 0; col < COLUMNS; col++) {
+        const cell = reels.children[row * COLUMNS + col];
 
-                if (cell) {
-                    cell.classList.add("winning");
-                }
-            }
-        });
+        if (cell) {
+            cell.classList.remove("winning");
+
+            // Restart the glow animation.
+            void cell.offsetWidth;
+
+            cell.classList.add("winning");
+        }
+    }
+});
+
 
         if (result.totalWin > 0) {
             balance += result.totalWin;

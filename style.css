@@ -489,81 +489,54 @@ body {
     }
 
 
+
 /* =====================================
-   SLOT SPIN + WIN ANIMATIONS
+   SMOOTHER SLOT SPIN ANIMATIONS
    ===================================== */
 
-/* The four vertical reels visibly move while spinning. */
+/* Keep the symbols moving while their reel spins. */
 
 .symbol.reel-spinning {
-    animation: reel-shake 0.12s linear infinite;
-    filter: brightness(1.12);
+    overflow: hidden;
+    filter: brightness(1.08);
 }
 
 .symbol.reel-spinning .symbol-content {
-    animation: symbol-flash 0.12s linear infinite;
+    animation: smooth-symbol-roll 0.22s ease-in-out infinite;
+    will-change: transform;
 }
 
-/* Small settling movement when an individual reel stops. */
+/* Gentle vertical rolling motion. */
 
-.symbol.reel-stop {
-    animation: reel-settle 0.28s ease-out;
-}
-
-/* Winning horizontal lines glow and pulse. */
-
-.symbol.winning {
-    position: relative;
-    z-index: 1;
-    border: 2px solid #ffffff;
-    box-shadow:
-        0 0 7px #ffffff,
-        0 0 15px rgba(255,255,255,0.9),
-        inset 0 0 12px rgba(255,255,255,0.75);
-    animation: winning-pulse 0.9s ease-in-out infinite;
-}
-
-/* SPINNING MOVEMENT */
-
-@keyframes reel-shake {
+@keyframes smooth-symbol-roll {
     0% {
-        transform: translateY(-2px);
-    }
-
-    50% {
-        transform: translateY(2px);
-    }
-
-    100% {
-        transform: translateY(-2px);
-    }
-}
-
-@keyframes symbol-flash {
-    0% {
-        filter: blur(1.5px);
+        transform: translateY(-12%) scaleY(1.04);
         opacity: 0.75;
     }
 
     50% {
-        filter: blur(0);
+        transform: translateY(0%) scaleY(1);
         opacity: 1;
     }
 
     100% {
-        filter: blur(1.5px);
+        transform: translateY(12%) scaleY(1.04);
         opacity: 0.75;
     }
 }
 
-/* REEL STOPPING MOVEMENT */
+/* Small bounce when each reel stops. */
+
+.symbol.reel-stop {
+    animation: reel-settle 0.3s ease-out;
+}
 
 @keyframes reel-settle {
     0% {
         transform: scale(1.08);
     }
 
-    65% {
+    60% {
         transform: scale(0.96);
     }
 
@@ -572,36 +545,57 @@ body {
     }
 }
 
-/* WINNING SYMBOL GLOW */
+/* =====================================
+   WINNING LINE HIGHLIGHT
+   ===================================== */
 
-@keyframes winning-pulse {
+.symbol.winning {
+    position: relative;
+    z-index: 5;
+
+    border: 3px solid #ffffff !important;
+
+    outline: 2px solid #ffffff;
+
+    filter: brightness(1.35);
+
+    box-shadow:
+        0 0 8px #ffffff,
+        0 0 18px #ffffff,
+        0 0 30px rgba(255,255,255,0.9),
+        inset 0 0 18px rgba(255,255,255,0.9);
+
+    animation: vampire-winning-glow 0.8s ease-in-out infinite !important;
+}
+
+@keyframes vampire-winning-glow {
     0%, 100% {
-        filter: brightness(1);
+        transform: scale(1);
+        filter: brightness(1.1);
+
         box-shadow:
-            0 0 5px #ffffff,
-            0 0 10px rgba(255,255,255,0.65),
-            inset 0 0 7px rgba(255,255,255,0.45);
+            0 0 7px #ffffff,
+            0 0 14px rgba(255,255,255,0.7),
+            inset 0 0 10px rgba(255,255,255,0.6);
     }
 
     50% {
-        filter: brightness(1.3);
+        transform: scale(1.045);
+        filter: brightness(1.5);
+
         box-shadow:
-            0 0 10px #ffffff,
-            0 0 22px rgba(255,255,255,1),
-            inset 0 0 15px rgba(255,255,255,0.9);
+            0 0 12px #ffffff,
+            0 0 25px #ffffff,
+            0 0 38px rgba(255,255,255,1),
+            inset 0 0 20px #ffffff;
     }
 }
 
-/* ACCESSIBILITY: REDUCE MOTION */
-
 @media (prefers-reduced-motion: reduce) {
-    .symbol.reel-spinning,
     .symbol.reel-spinning .symbol-content,
     .symbol.reel-stop,
     .symbol.winning {
-        animation-duration: 0.01ms;
-        animation-iteration-count: 1;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
     }
-}
-
 }
